@@ -11,9 +11,10 @@
   let autoplay = false;
   let ended = false;
   let canPlay = false;
+  let showContinueBtn = false;
 
   const play = () => {
-    canPlay = true;
+    showContinueBtn = true;
     video.play();
   };
 
@@ -126,19 +127,21 @@
 
   onMount(() => {
     video.onloadeddata = checkLoad;
+    video.onended = () => {
+      video.src = '/video/Tendou Arisu Maid Live2D - Loop.webm';
+      video.loop = true;
+      canPlay = true;
+      video.play();
+    };
 
     video.oncanplay = () => {
-      canPlay = true;
+      showContinueBtn = true;
     };
   });
 
   onDestroy(() => {
     if (!browser || !audio) return;
     destroyEvents();
-  });
-
-  onMount(() => {
-    video.addEventListener('loadeddata', checkLoad);
   });
 </script>
 
@@ -149,7 +152,7 @@
   <div
     on:click={play}
     class="absolute left-0 top-0 h-screen w-screen bg-sky-500
-      transition duration-1000 {canPlay ? 'z-0 opacity-0' : 'z-40 opacity-100'}"
+      transition duration-1000 {showContinueBtn ? 'z-0 opacity-0' : 'z-40 opacity-100'}"
   >
     <div class="relative flex min-h-screen justify-center p-[1vw]">
       <div class="flex w-screen items-end justify-center">
@@ -163,16 +166,15 @@
     </div>
   </div>
 
-  <div class="transition duration-1000 {canPlay ? 'z-40 opacity-100' : 'z-0 opacity-0'}">
+  <div class="transition duration-1000 {showContinueBtn ? 'z-40 opacity-100' : 'z-0 opacity-0'}">
     <video
       bind:this={video}
-      loop
-      preload="metadata"
+      preload="auto"
       class="absolute left-0 top-0 h-screen w-screen object-cover
           brightness-[80%]"
     >
       <track kind="captions" />
-      <source src="/video/Tendou Arisu Maid Live2D - Loop.webm" type="video/webm" />
+      <source src="/video/Tendou Arisu Maid Live2D - Intro.webm" type="video/webm" />
     </video>
 
     <div class="absolute right-0 top-0 z-50 w-screen px-[1.5vw] pt-[1vw]">
