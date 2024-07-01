@@ -38,6 +38,8 @@
     to: number;
     duration: number;
   }): Promise<void> => {
+    // ref: https://stackoverflow.com/a/13149848
+
     const volume = audio.volume;
     const delta = to - volume;
     const interval = 13;
