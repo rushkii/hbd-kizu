@@ -6,6 +6,7 @@
 
   let video: HTMLVideoElement;
   let audio: HTMLAudioElement;
+  let bgm: HTMLAudioElement;
   let isPlaying = false;
   let currentIndex = 0;
   let autoplay = false;
@@ -15,6 +16,8 @@
 
   const play = () => {
     showContinueBtn = true;
+    bgm.loop = true;
+    bgm.play();
     video.play();
   };
 
@@ -22,23 +25,44 @@
     console.log('video loaded');
   };
 
-  // const dialoguePlay = () => {
-  //   isPlaying = true;
-  // };
+  const easing = (duration: number) => {
+    return 0.5 - Math.cos(duration * Math.PI) / 2;
+  };
+
+  const fade = ({
+    audio,
+    to,
+    duration
+  }: {
+    audio: HTMLAudioElement;
+    to: number;
+    duration: number;
+  }): Promise<void> => {
+    const volume = audio.volume;
+    const delta = to - volume;
+    const interval = 13;
+
+    const ticks = Math.floor(duration / interval);
+    let tick = 1;
+
+    return new Promise<void>((resolve) => {
+      const timer = setInterval(() => {
+        bgm.volume = volume + easing(tick / ticks) * delta;
+
+        if (++tick === ticks + 1) {
+          clearInterval(timer);
+          resolve();
+        }
+      }, interval);
+    });
+  };
 
   const autoplayDialogueAudio = () => {
     if (!autoplay || data[currentIndex].choices.length) return;
-
     if (currentIndex === data.length - 1) {
       isPlaying = false;
-
-      // playState.update((e) => {
-      //   e.audio!.volume = 0.3;
-      //   return e;
-      // });
-
+      fade({ audio: bgm, to: 1, duration: 2000 });
       destroyEvents();
-
       return;
     }
 
@@ -82,12 +106,9 @@
       ended = false;
     };
 
-    setTimeout(() => {
-      // playState.update((e) => {
-      //   e.audio!.volume = 0.02;
-      //   return e;
-      // });
+    fade({ audio: bgm, to: 0.02, duration: 2000 });
 
+    setTimeout(() => {
       audio.play();
     }, 1000);
   };
@@ -99,12 +120,7 @@
   const next = () => {
     if (currentIndex === data.length - 1) {
       isPlaying = false;
-
-      // playState.update((e) => {
-      //   e.audio!.volume = 0.3;
-      //   return e;
-      // });
-
+      fade({ audio: bgm, to: 1, duration: 2000 });
       return;
     }
 
@@ -116,7 +132,6 @@
 
   const nextDialogue = () => {
     if (!audio.ended || data[currentIndex].choices.length) return;
-
     next();
   };
 
@@ -126,6 +141,7 @@
   };
 
   onMount(() => {
+    bgm = new Audio('/audio/Koi is Love BGM.wav');
     video.onloadeddata = checkLoad;
     video.onended = () => {
       video.src = '/video/Tendou Arisu Maid Live2D - Loop.webm';
