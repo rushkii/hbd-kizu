@@ -12,10 +12,10 @@
   let autoplay = false;
   let ended = false;
   let canPlay = false;
-  let showContinueBtn = false;
+  let showContinueBtn = true;
 
   const play = () => {
-    showContinueBtn = true;
+    showContinueBtn = false;
     bgm.loop = true;
     bgm.play();
     video.play();
@@ -170,7 +170,7 @@
   <div
     on:click={play}
     class="absolute left-0 top-0 h-screen w-screen bg-sky-500
-      transition duration-1000 {showContinueBtn ? 'z-0 opacity-0' : 'z-40 opacity-100'}"
+      transition duration-1000 {showContinueBtn ? 'z-40 opacity-100' : 'z-0 opacity-0'}"
   >
     <div class="relative flex min-h-screen justify-center p-[1vw]">
       <div class="flex w-screen items-end justify-center">
@@ -184,7 +184,7 @@
     </div>
   </div>
 
-  <div class="transition duration-1000 {showContinueBtn ? 'z-40 opacity-100' : 'z-0 opacity-0'}">
+  <div class="transition duration-1000 {showContinueBtn ? 'z-0 opacity-0' : 'z-40 opacity-100'}">
     <video
       bind:this={video}
       preload="auto"
