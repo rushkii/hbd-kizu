@@ -47,7 +47,7 @@
 
     return new Promise<void>((resolve) => {
       const timer = setInterval(() => {
-        bgm.volume = volume + easing(tick / ticks) * delta;
+        audio.volume = volume + easing(tick / ticks) * delta;
 
         if (++tick === ticks + 1) {
           clearInterval(timer);
