@@ -146,6 +146,7 @@
     bgm = new Audio('/audio/Koi is Love BGM.wav');
     video.onloadeddata = checkLoad;
     video.onended = () => {
+      video.oncanplay = null;
       video.src = '/video/Tendou Arisu Maid Live2D - Loop.webm';
       video.loop = true;
       canPlay = true;
