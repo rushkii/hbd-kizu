@@ -2,8 +2,6 @@
   import { browser } from '$app/environment';
   import CloudIcons from '$components/CloudIcons.svelte';
   import { data } from '$lib';
-  import { loadVideo } from '$lib/functions';
-  import { assetsStore } from '$lib/stores';
   import { onDestroy, onMount } from 'svelte';
 
   let video: HTMLVideoElement;
@@ -14,21 +12,13 @@
   let autoplay = false;
   let ended = false;
   let canPlay = false;
-  let showContinueBtn = false;
-  let removeLoadingScreen = false;
-
-  const DEFAULT_BGM_VOLUME = 0.2;
+  let showContinueBtn = true;
 
   const play = () => {
-    removeLoadingScreen = true;
     showContinueBtn = false;
     bgm.loop = true;
     bgm.play();
     video.play();
-  };
-
-  const checkLoad = () => {
-    console.log('video loaded');
   };
 
   const easing = (duration: number) => {
@@ -69,7 +59,7 @@
     if (!autoplay || data[currentIndex].choices.length) return;
     if (currentIndex === data.length - 1) {
       isPlaying = false;
-      fade({ audio: bgm, to: DEFAULT_BGM_VOLUME, duration: 2000 });
+      fade({ audio: bgm, to: 1, duration: 2000 });
       destroyEvents();
       return;
     }
@@ -128,7 +118,7 @@
   const next = () => {
     if (currentIndex === data.length - 1) {
       isPlaying = false;
-      fade({ audio: bgm, to: DEFAULT_BGM_VOLUME, duration: 2000 });
+      fade({ audio: bgm, to: 1, duration: 2000 });
       return;
     }
 
@@ -150,26 +140,16 @@
 
   onMount(() => {
     bgm = new Audio('/audio/Koi is Love BGM.wav');
-<<<<<<< HEAD
-    bgm.volume = DEFAULT_BGM_VOLUME;
-
-    loadVideo({
-      videos: [
-        '/video/Tendou Arisu Maid Live2D - Intro.webm',
-        '/video/Tendou Arisu Maid Live2D - Loop.webm'
-      ],
-      audio: '/audio/Koi is Love BGM.wav'
-    });
-
-=======
-    video.onloadeddata = checkLoad;
->>>>>>> parent of 928841c (chore: remove uneccessary code)
     video.onended = () => {
       video.oncanplay = null;
-      video.src = $assetsStore.video[1];
+      video.src = '/video/Tendou Arisu Maid Live2D - Loop.webm';
       video.loop = true;
       canPlay = true;
       video.play();
+    };
+
+    video.oncanplay = () => {
+      showContinueBtn = true;
     };
   });
 
@@ -177,14 +157,6 @@
     if (!browser || !audio) return;
     destroyEvents();
   });
-
-  $: {
-    console.log($assetsStore.video.length === 2 && $assetsStore.audio !== '');
-    if ($assetsStore.video.length === 2 && $assetsStore.audio !== '') {
-      showContinueBtn = true;
-      video.src = $assetsStore.video[0];
-    }
-  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -193,16 +165,14 @@
 <div class="relative left-0 top-0 h-screen w-screen">
   <div
     on:click={play}
-    class="absolute left-0 top-0 h-screen w-screen
-      bg-sky-500 transition duration-1000
-      {removeLoadingScreen ? 'z-0 opacity-0' : ' z-40 opacity-100'}"
+    class="absolute left-0 top-0 h-screen w-screen bg-sky-500
+      transition duration-1000 {showContinueBtn ? 'z-40 opacity-100' : 'z-0 opacity-0'}"
   >
     <div class="relative flex min-h-screen justify-center p-[1vw]">
       <div class="flex w-screen items-end justify-center">
         <div
-          class="btn-interaction w-[calc(100%-30vw)] px-[.5vw]
-          text-center text-[2vw] font-semibold uppercase text-[#7887AE]
-          {showContinueBtn ? 'fade-show z-40 opacity-100' : 'z-0 opacity-0'}"
+          class="fade-show btn-interaction w-[calc(100%-30vw)] px-[.5vw]
+          text-center text-[2vw] font-semibold uppercase text-[#7887AE]"
         >
           Continue
         </div>
@@ -218,27 +188,19 @@
           brightness-[80%]"
     >
       <track kind="captions" />
-      <source type="video/webm" />
+      <source src="/video/Tendou Arisu Maid Live2D - Intro.webm" type="video/webm" />
     </video>
 
     <div class="absolute right-0 top-0 z-50 w-screen px-[1.5vw] pt-[1vw]">
       <div class="flex justify-end">
-        <div
-          class="relative skew-x-[-8deg] overflow-hidden rounded-[.5vw]
-            p-[.15vw] before:absolute before:left-1/2 before:top-1/2
-            before:-z-50 before:aspect-square before:w-full
-            {autoplay ? 'border-animate' : ''}"
+        <button
+          on:click={autoDialogue}
+          class="{autoplay ? 'bg-yellow-400' : 'bg-white'} {canPlay ? 'fade-show' : 'hidden'}
+              skew-x-[-8deg] rounded-[.5vw] p-[.5vw] text-[1.1vw]
+              font-extrabold uppercase text-[#2d354b]"
         >
-          <button
-            on:click={autoDialogue}
-            class="overflow-hidden rounded-[.5vw] px-[.8vw] py-[.5vw]
-              text-[1.1vw] font-extrabold uppercase text-[#2d354b]
-              {autoplay ? 'bg-yellow-400' : 'bg-white'} transition
-              {canPlay ? 'fade-show' : 'hidden'} duration-500"
-          >
-            Auto
-          </button>
-        </div>
+          <div class="px-[1vw]">Auto</div>
+        </button>
       </div>
     </div>
 
@@ -309,11 +271,6 @@
 </div>
 
 <style>
-  .border-animate::before {
-    background: conic-gradient(transparent, #fff 270deg, transparent);
-    animation: rotate 4s linear infinite;
-  }
-
   .fade-show {
     animation-name: animate-show;
     animation-duration: 1s;
@@ -398,15 +355,6 @@
     }
     100% {
       @apply z-0 hidden opacity-0;
-    }
-  }
-
-  @keyframes rotate {
-    0% {
-      transform: translate(-50%, -50%) scale(1.4) rotate(0);
-    }
-    100% {
-      transform: translate(-50%, -50%) scale(1.4) rotate(1turn);
     }
   }
 </style>
