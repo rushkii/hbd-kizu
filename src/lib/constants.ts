@@ -1,4 +1,7 @@
-export const data = [
+import type { Asset } from '$types';
+
+// dialogue assets data.
+export const DIALOGUES = [
   {
     text: 'Kiizuha-sensei! bukankah hari ini adalah hari ulang tahunmu?',
     audio: '/audio/1.wav',
@@ -82,4 +85,22 @@ export const data = [
     playAfter: 500,
     choices: []
   }
+];
+
+// define all assets.
+export const ASSETS: Asset[] = [
+  {
+    type: 'video-intro',
+    src: '/video/Tendou Arisu Maid Live2D - Intro.webm'
+  },
+  {
+    type: 'video-loop',
+    src: '/video/Tendou Arisu Maid Live2D - Loop.webm'
+  },
+  {
+    type: 'bgm',
+    src: '/audio/Koi is Love BGM - Compressed.flac'
+  },
+  // merge dialogue audio assets.
+  ...DIALOGUES.flatMap((e): Asset => ({ type: 'dialogue', src: e.audio }))
 ];

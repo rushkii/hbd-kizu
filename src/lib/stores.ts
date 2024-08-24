@@ -1,11 +1,13 @@
+import type { Asset, Progress } from '$types';
 import { writable } from 'svelte/store';
 
-interface AssetStore {
-  video: string[];
-  audio: string;
-}
-
-export const assetsStore = writable<AssetStore>({
-  video: [],
-  audio: ''
+// store or global state management to save the assets.
+export const assetsStore = writable<{
+  assets: Asset[];
+  progress: Progress[];
+  totalSize: number;
+}>({
+  assets: [],
+  progress: [],
+  totalSize: 0
 });
