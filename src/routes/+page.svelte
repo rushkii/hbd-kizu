@@ -27,6 +27,10 @@
     video.play();
   };
 
+  const checkLoad = () => {
+    console.log('video loaded');
+  };
+
   const easing = (duration: number) => {
     return 0.5 - Math.cos(duration * Math.PI) / 2;
   };
@@ -146,6 +150,7 @@
 
   onMount(() => {
     bgm = new Audio('/audio/Koi is Love BGM.wav');
+<<<<<<< HEAD
     bgm.volume = DEFAULT_BGM_VOLUME;
 
     loadVideo({
@@ -156,6 +161,9 @@
       audio: '/audio/Koi is Love BGM.wav'
     });
 
+=======
+    video.onloadeddata = checkLoad;
+>>>>>>> parent of 928841c (chore: remove uneccessary code)
     video.onended = () => {
       video.oncanplay = null;
       video.src = $assetsStore.video[1];
