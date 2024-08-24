@@ -241,7 +241,19 @@
       bgm = new Audio($assetsStore.assets.find((e) => e.type === 'bgm')?.src);
       bgm.volume = DEFAULT_BGM_VOLUME;
       video.src = $assetsStore.assets.find((e) => e.type === 'video-intro')?.src!;
-      dialogues = $assetsStore.assets.filter((e) => e.type === 'dialogue').flatMap((e) => e.src);
+
+      const arr = $assetsStore.assets.filter((e) => e.type === 'dialogue');
+
+      arr.sort((a, b) => {
+        const numA = parseInt(a.filename?.split('.')[0]!, 10);
+        const numB = parseInt(b.filename?.split('.')[0]!, 10);
+        return numA - numB;
+      });
+      arr.forEach((item, index) => {
+        item.filename = `${index + 1}.wav`;
+      });
+
+      dialogues = arr.flatMap((e) => e.src);
     }
 
     calculatePercent(progress, totalSize);
