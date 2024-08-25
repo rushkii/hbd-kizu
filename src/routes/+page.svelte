@@ -27,7 +27,7 @@
   $: allowPlay = false;
   $: dialogues = [];
 
-  const DEFAULT_BGM_VOLUME = 1;
+  const DEFAULT_BGM_VOLUME = 0.2;
 
   const play = () => {
     // play button after the loading assets is finished.
