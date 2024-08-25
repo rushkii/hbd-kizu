@@ -1,3 +1,3 @@
-import { data } from './constants';
+import { ASSETS, DIALOGUES } from './constants';
 
-export { data };
+export { ASSETS, DIALOGUES };

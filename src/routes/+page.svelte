@@ -1,20 +1,39 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import CloudIcons from '$components/CloudIcons.svelte';
-  import { data } from '$lib';
+  import { ASSETS, DIALOGUES } from '$lib';
+  import { preloadAssets } from '$lib/functions';
+  import { assetsStore } from '$lib/stores';
   import { onDestroy, onMount } from 'svelte';
+  import { fade as fadeTransition } from 'svelte/transition';
 
   let video: HTMLVideoElement;
   let audio: HTMLAudioElement;
   let bgm: HTMLAudioElement;
-  let isPlaying = false;
-  let currentIndex = 0;
-  let autoplay = false;
-  let ended = false;
-  let canPlay = false;
-  let showContinueBtn = true;
+  let loadingElement: HTMLDivElement;
+
+  let isPlaying: boolean = false;
+  let autoplay: boolean = false;
+  let ended: boolean = false;
+  let canPlay: boolean = false;
+  let showContinueBtn: boolean = false;
+  let removeLoadingScreen: boolean = false;
+
+  let currentIndex: number = 0;
+  let progress: number = 0;
+  let totalSize: number = 0;
+  let dialogues: string[];
+
+  $: allowPlay = false;
+  $: dialogues = [];
+
+  const DEFAULT_BGM_VOLUME = 0.2;
 
   const play = () => {
+    // play button after the loading assets is finished.
+    if (!showContinueBtn || !allowPlay) return;
+
+    removeLoadingScreen = true;
     showContinueBtn = false;
     bgm.loop = true;
     bgm.play();
@@ -22,6 +41,7 @@
   };
 
   const easing = (duration: number) => {
+    // easing calculation.
     return 0.5 - Math.cos(duration * Math.PI) / 2;
   };
 
@@ -34,6 +54,7 @@
     to: number;
     duration: number;
   }): Promise<void> => {
+    // audio fade volume.
     // ref: https://stackoverflow.com/a/13149848
 
     const volume = audio.volume;
@@ -56,32 +77,35 @@
   };
 
   const autoplayDialogueAudio = () => {
-    if (!autoplay || data[currentIndex].choices.length) return;
-    if (currentIndex === data.length - 1) {
+    // event function to run autoplay.
+
+    if (!autoplay || DIALOGUES[currentIndex].choices.length) return;
+    if (currentIndex === DIALOGUES.length - 1) {
       isPlaying = false;
-      fade({ audio: bgm, to: 1, duration: 2000 });
+      fade({ audio: bgm, to: DEFAULT_BGM_VOLUME, duration: 2000 });
       destroyEvents();
       return;
     }
 
     currentIndex++;
-    audio.src = data[currentIndex].audio;
+    audio.src = dialogues[currentIndex];
 
     setTimeout(() => {
       audio.play();
-    }, data[currentIndex].playAfter);
+    }, DIALOGUES[currentIndex].playAfter);
   };
 
   const autoDialogue = () => {
+    // auto dialogue triggerer.
     autoplay = !autoplay;
 
-    if (data[currentIndex].choices.length) return;
+    if (DIALOGUES[currentIndex].choices.length) return;
 
     if (autoplay) {
       if (!audio?.ended) return;
 
       currentIndex++;
-      audio!.src = data[currentIndex].audio;
+      audio!.src = dialogues[currentIndex];
       ended = false;
       audio?.play();
       audio.onended = autoplayDialogueAudio;
@@ -91,10 +115,12 @@
   };
 
   const dialoguePlay = () => {
+    // button to play at start point.
+
     if (isPlaying || !canPlay) return;
 
     currentIndex = 0;
-    audio = new Audio(data[currentIndex].audio);
+    audio = new Audio(dialogues[currentIndex]);
     isPlaying = true;
     ended = false;
 
@@ -116,21 +142,65 @@
   };
 
   const next = () => {
-    if (currentIndex === data.length - 1) {
+    // logic to play next dialogue.
+
+    if (currentIndex === DIALOGUES.length - 1) {
       isPlaying = false;
-      fade({ audio: bgm, to: 1, duration: 2000 });
+      fade({ audio: bgm, to: DEFAULT_BGM_VOLUME, duration: 2000 });
       return;
     }
 
     currentIndex++;
-    audio.src = data[currentIndex].audio;
+    audio.src = dialogues[currentIndex];
     audio.play();
     ended = false;
   };
 
   const nextDialogue = () => {
-    if (!audio.ended || data[currentIndex].choices.length) return;
+    // button to play next dialogue manually.
+
+    if (!audio.ended || DIALOGUES[currentIndex].choices.length) return;
     next();
+  };
+
+  const calculatePercent = (current: number, total: number) => {
+    // assets progress percent calculator.
+    const percent = (current / total) * 100;
+    if (isNaN(percent)) return 0;
+    return percent;
+  };
+
+  const animateLoading = (iterationDuration: number = 200) => {
+    // loading animation UI logic.
+    // ref: https://stackoverflow.com/a/57548666
+
+    if (!browser) return;
+
+    window.requestAnimationFrame(function () {
+      const percent = calculatePercent(progress, totalSize);
+
+      loadingElement.style.width = `${percent}%`;
+      loadingElement.style.transitionDuration = `${iterationDuration}ms`;
+
+      const next = (percent === undefined ? 0 : percent) + 1;
+      if (next <= 100) {
+        setTimeout(animateLoading, iterationDuration, loadingElement, iterationDuration);
+      }
+    });
+  };
+
+  const formatBytes = (bytes: number, decimals: number = 2) => {
+    // convert Bytes to specific sizes format.
+    // ref: https://stackoverflow.com/a/18650828
+
+    if (!+bytes) return '0 Bytes';
+
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   };
 
   const destroyEvents = () => {
@@ -139,17 +209,14 @@
   };
 
   onMount(() => {
-    bgm = new Audio('/audio/Koi is Love BGM.wav');
+    preloadAssets({ assets: ASSETS });
+
     video.onended = () => {
       video.oncanplay = null;
-      video.src = '/video/Tendou Arisu Maid Live2D - Loop.webm';
+      video.src = $assetsStore.assets.find((e) => e.type === 'video-loop')?.src!;
       video.loop = true;
-      canPlay = true;
       video.play();
-    };
-
-    video.oncanplay = () => {
-      showContinueBtn = true;
+      canPlay = true;
     };
   });
 
@@ -157,6 +224,40 @@
     if (!browser || !audio) return;
     destroyEvents();
   });
+
+  $: {
+    // reactive ($:) state area to watch assets state progress.
+
+    progress = $assetsStore.progress.reduce(
+      (accumulator, current) => accumulator + (current.downloaded ?? 0),
+      0
+    );
+
+    totalSize = $assetsStore.totalSize;
+    animateLoading();
+
+    if ($assetsStore.assets.length === ASSETS.length) {
+      // if preloaded assets completely loaded then run the logic.
+      bgm = new Audio($assetsStore.assets.find((e) => e.type === 'bgm')?.src);
+      bgm.volume = DEFAULT_BGM_VOLUME;
+      video.src = $assetsStore.assets.find((e) => e.type === 'video-intro')?.src!;
+
+      const arr = $assetsStore.assets.filter((e) => e.type === 'dialogue');
+
+      arr.sort((a, b) => {
+        const numA = parseInt(a.filename?.split('.')[0]!, 10);
+        const numB = parseInt(b.filename?.split('.')[0]!, 10);
+        return numA - numB;
+      });
+      arr.forEach((item, index) => {
+        item.filename = `${index + 1}.wav`;
+      });
+
+      dialogues = arr.flatMap((e) => e.src);
+    }
+
+    calculatePercent(progress, totalSize);
+  }
 </script>
 
 <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -165,17 +266,58 @@
 <div class="relative left-0 top-0 h-screen w-screen">
   <div
     on:click={play}
-    class="absolute left-0 top-0 h-screen w-screen bg-sky-500
-      transition duration-1000 {showContinueBtn ? 'z-40 opacity-100' : 'z-0 opacity-0'}"
+    class="absolute left-0 top-0 h-screen w-screen
+      bg-neutral-800 transition duration-1000
+      {removeLoadingScreen ? 'z-0 opacity-0' : ' z-40 opacity-100'}"
   >
     <div class="relative flex min-h-screen justify-center p-[1vw]">
-      <div class="flex w-screen items-end justify-center">
-        <div
-          class="fade-show btn-interaction w-[calc(100%-30vw)] px-[.5vw]
-          text-center text-[2vw] font-semibold uppercase text-[#7887AE]"
-        >
-          Continue
-        </div>
+      <div
+        class="absolute left-0 top-0 flex h-screen w-screen flex-col items-center justify-center text-white
+        {removeLoadingScreen ? 'z-0 opacity-0' : ' z-40 opacity-100'}"
+      >
+        {#if $assetsStore.assets.length !== ASSETS.length}
+          <div
+            transition:fadeTransition={{ duration: 200 }}
+            on:outroend={() => (showContinueBtn = true)}
+            class="space-y-[.5vw]"
+          >
+            <div class="flex w-screen justify-center">
+              <div class="flex flex-col">
+                <div class="relative w-[40vw]">
+                  <div class="h-[1.5vw] overflow-hidden rounded-md border border-neutral-600">
+                    <div
+                      bind:this={loadingElement}
+                      class="transition-loading z-10 h-full w-0 bg-white"
+                    />
+                    <div class="-z-10 w-full" />
+                  </div>
+                  <div class="mt-[.3vw] flex items-end justify-between text-[1vw] font-semibold">
+                    <div>
+                      {formatBytes(progress)}
+                      {calculatePercent(progress, totalSize).toFixed(1)}%
+                    </div>
+                    <div>Loading...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        {/if}
+      </div>
+
+      <div
+        class="absolute left-0 top-0 flex h-screen w-screen flex-col items-center justify-center text-white
+        {removeLoadingScreen ? 'z-0 opacity-0' : ' z-40 opacity-100'}"
+      >
+        {#if showContinueBtn}
+          <div
+            transition:fadeTransition={{ duration: 500, delay: 100 }}
+            on:introend={() => (allowPlay = true)}
+            class="animate-pulse text-center text-[2vw] font-semibold uppercase"
+          >
+            click anywhere to continue
+          </div>
+        {/if}
       </div>
     </div>
   </div>
@@ -188,19 +330,27 @@
           brightness-[80%]"
     >
       <track kind="captions" />
-      <source src="/video/Tendou Arisu Maid Live2D - Intro.webm" type="video/webm" />
+      <source type="video/webm" />
     </video>
 
     <div class="absolute right-0 top-0 z-50 w-screen px-[1.5vw] pt-[1vw]">
       <div class="flex justify-end">
-        <button
-          on:click={autoDialogue}
-          class="{autoplay ? 'bg-yellow-400' : 'bg-white'} {canPlay ? 'fade-show' : 'hidden'}
-              skew-x-[-8deg] rounded-[.5vw] p-[.5vw] text-[1.1vw]
-              font-extrabold uppercase text-[#2d354b]"
+        <div
+          class="relative skew-x-[-8deg] overflow-hidden rounded-[.5vw]
+            p-[.15vw] before:absolute before:left-1/2 before:top-1/2
+            before:-z-50 before:aspect-square before:w-full
+            {autoplay ? 'border-animate' : ''}"
         >
-          <div class="px-[1vw]">Auto</div>
-        </button>
+          <button
+            on:click={autoDialogue}
+            class="overflow-hidden rounded-[.5vw] px-[.8vw] py-[.5vw]
+              text-[1.1vw] font-extrabold uppercase text-[#2d354b]
+              drop-shadow-lg {canPlay ? 'fade-show' : 'hidden'} duration-500
+              {autoplay ? 'bg-yellow-400' : 'bg-white'} transition"
+          >
+            Auto
+          </button>
+        </div>
       </div>
     </div>
 
@@ -226,11 +376,11 @@
 
     <div class="absolute left-0 top-0 h-screen w-screen">
       <div class="flex min-h-screen items-center justify-center">
-        {#if isPlaying && currentIndex !== data.length}
+        {#if isPlaying && currentIndex !== DIALOGUES.length}
           <div class="chat flex w-full max-w-[30vw] justify-center">
             <div on:click={nextDialogue} class="chat-bubble shader flex flex-col">
               <div class="font-semibold">
-                {data[currentIndex].text}
+                {DIALOGUES[currentIndex].text}
               </div>
               {#if ended}
                 <div class="mt-[1vw] flex justify-end">
@@ -245,11 +395,11 @@
 
     <div
       class="absolute left-0 top-0 h-screen w-screen transition-all duration-200
-      {isPlaying && data[currentIndex].choices.length && ended ? 'fade-show' : 'hidden'}"
+      {isPlaying && DIALOGUES[currentIndex].choices.length && ended ? 'fade-show' : 'hidden'}"
     >
       <div class="flex min-h-screen items-end justify-center pb-[1.5vw]">
         <div class="flex flex-col gap-[.5vw]">
-          {#each data[currentIndex].choices as choice}
+          {#each DIALOGUES[currentIndex].choices as choice}
             <button
               on:click={next}
               class="shader flex items-center gap-[.5vw] rounded-[2vw] border-[.1vw]
@@ -271,6 +421,15 @@
 </div>
 
 <style>
+  .transition-loading {
+    transition: width linear;
+  }
+
+  .border-animate::before {
+    background: conic-gradient(transparent, #fff 270deg, transparent);
+    animation: rotate 4s linear infinite;
+  }
+
   .fade-show {
     animation-name: animate-show;
     animation-duration: 1s;
@@ -355,6 +514,15 @@
     }
     100% {
       @apply z-0 hidden opacity-0;
+    }
+  }
+
+  @keyframes rotate {
+    0% {
+      transform: translate(-50%, -50%) scale(1.4) rotate(0);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1.4) rotate(1turn);
     }
   }
 </style>
