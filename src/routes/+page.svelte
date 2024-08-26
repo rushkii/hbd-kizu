@@ -426,7 +426,7 @@
     </div>
 
     <div
-      class="absolute left-0 top-0 h-screen w-screen transition-all duration-200
+      class="absolute left-0 top-0 z-[2] h-screen w-screen transition-all duration-200
       {isPlaying && DIALOGUES[currentIndex].choices.length && ended ? 'fade-show' : 'hidden'}"
     >
       <div class="flex min-h-screen items-end justify-center pb-[1.5vw]">
