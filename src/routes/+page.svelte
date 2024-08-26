@@ -7,7 +7,8 @@
   import { onDestroy, onMount } from 'svelte';
   import { fade as fadeTransition } from 'svelte/transition';
 
-  let video: HTMLVideoElement;
+  let videoIntro: HTMLVideoElement;
+  let videoLoop: HTMLVideoElement;
   let audio: HTMLAudioElement;
   let bgm: HTMLAudioElement;
   let loadingElement: HTMLDivElement;
@@ -35,9 +36,18 @@
 
     removeLoadingScreen = true;
     showContinueBtn = false;
+
     bgm.loop = true;
     bgm.play();
-    video.play();
+
+    videoIntro.play();
+
+    // play & pause to prevent error:
+    // `NotAllowedError: play() can only be initiated
+    // by a user gesture.`
+    videoLoop.play();
+    videoLoop.pause();
+    videoLoop.currentTime = 0;
   };
 
   const easing = (duration: number) => {
@@ -211,11 +221,14 @@
   onMount(() => {
     preloadAssets({ assets: ASSETS });
 
-    video.onended = () => {
-      video.oncanplay = null;
-      video.src = $assetsStore.assets.find((e) => e.type === 'video-loop')?.src!;
-      video.loop = true;
-      video.play();
+    videoIntro.onended = () => {
+      videoIntro.oncanplay = null;
+      videoIntro.classList.remove('z-[1]');
+
+      videoLoop.classList.remove('z-[-1]');
+      videoLoop.classList.add('z-[1]');
+      videoLoop.play();
+
       canPlay = true;
     };
   });
@@ -240,7 +253,11 @@
       // if preloaded assets completely loaded then run the logic.
       bgm = new Audio($assetsStore.assets.find((e) => e.type === 'bgm')?.src);
       bgm.volume = DEFAULT_BGM_VOLUME;
-      video.src = $assetsStore.assets.find((e) => e.type === 'video-intro')?.src!;
+
+      videoIntro.src = $assetsStore.assets.find((e) => e.type === 'video-intro')?.src!;
+
+      videoLoop.src = $assetsStore.assets.find((e) => e.type === 'video-loop')?.src!;
+      videoLoop.loop = true;
 
       const arr = $assetsStore.assets.filter((e) => e.type === 'dialogue');
 
@@ -324,10 +341,20 @@
 
   <div class="transition duration-1000 {showContinueBtn ? 'z-0 opacity-0' : 'z-40 opacity-100'}">
     <video
-      bind:this={video}
+      bind:this={videoIntro}
       preload="auto"
-      class="absolute left-0 top-0 h-screen w-screen object-cover
-          brightness-[80%]"
+      class="absolute left-0 top-0 z-[1] h-screen
+          w-screen object-cover brightness-[80%]"
+    >
+      <track kind="captions" />
+      <source type="video/webm" />
+    </video>
+
+    <video
+      bind:this={videoLoop}
+      preload="auto"
+      class="absolute left-0 top-0 z-[-1] h-screen
+          w-screen object-cover brightness-[80%]"
     >
       <track kind="captions" />
       <source type="video/webm" />
@@ -374,7 +401,7 @@
       </div>
     </div>
 
-    <div class="absolute left-0 top-0 h-screen w-screen">
+    <div class="absolute left-0 top-0 z-[2] h-screen w-screen">
       <div class="flex min-h-screen items-center justify-center">
         {#if isPlaying && currentIndex !== DIALOGUES.length}
           <div class="chat flex w-full max-w-[30vw] justify-center">
