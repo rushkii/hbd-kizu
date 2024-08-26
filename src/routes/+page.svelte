@@ -229,6 +229,11 @@
       videoLoop.classList.add('z-[1]');
       videoLoop.play();
 
+      setTimeout(() => {
+        // use timeout for letting the looped video play first.
+        videoIntro.remove();
+      }, 1000);
+
       canPlay = true;
     };
   });
