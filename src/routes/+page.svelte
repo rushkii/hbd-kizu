@@ -2,7 +2,7 @@
   import { browser } from '$app/environment';
   import CloudIcons from '$components/CloudIcons.svelte';
   import { ASSETS, DIALOGUES } from '$lib';
-  import { preloadAssets } from '$lib/functions';
+  import { loadParticles, preloadAssets } from '$lib/functions';
   import { assetsStore } from '$lib/stores';
   import { onDestroy, onMount } from 'svelte';
   import { fade as fadeTransition } from 'svelte/transition';
@@ -19,6 +19,8 @@
   let canPlay: boolean = false;
   let showContinueBtn: boolean = false;
   let removeLoadingScreen: boolean = false;
+  let particlesLoaded: boolean = false;
+  let showParticles: boolean = false;
 
   let currentIndex: number = 0;
   let progress: number = 0;
@@ -252,6 +254,13 @@
     );
 
     totalSize = $assetsStore.totalSize;
+
+    if (totalSize > 0 && !particlesLoaded) {
+      loadParticles({ id: 'particles' });
+      particlesLoaded = true;
+      showParticles = true;
+    }
+
     animateLoading();
 
     if ($assetsStore.assets.length === ASSETS.length) {
@@ -276,6 +285,11 @@
       });
 
       dialogues = arr.flatMap((e) => e.src);
+      showParticles = false;
+
+      setTimeout(() => {
+        document.querySelector('#particles')?.remove();
+      }, 1000);
     }
 
     calculatePercent(progress, totalSize);
@@ -292,6 +306,10 @@
       bg-neutral-800 transition duration-1000
       {removeLoadingScreen ? 'z-0 opacity-0' : ' z-40 opacity-100'}"
   >
+    <div
+      id="particles"
+      class="{showParticles ? 'opacity-100' : 'opacity-0'} transition-opacity duration-[2000ms]"
+    />
     <div class="relative flex min-h-screen justify-center p-[1vw]">
       <div
         class="absolute left-0 top-0 flex h-screen w-screen flex-col items-center justify-center text-white

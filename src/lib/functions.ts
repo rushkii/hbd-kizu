@@ -2,6 +2,9 @@ import { page } from '$app/stores';
 import type { Asset, Progress } from '$types';
 import { get } from 'svelte/store';
 import { assetsStore } from './stores';
+import { loadAll } from '@tsparticles/all';
+import { tsParticles } from '@tsparticles/engine';
+import { PARTICLES_CONFIG } from './constants';
 
 type XHRRequest = ((this: XMLHttpRequest, e: ProgressEvent | Event) => unknown) | null;
 
@@ -105,4 +108,9 @@ const upsertItem = (array: Progress[], newItem: Progress) => {
   }
 
   return newArray;
+};
+
+export const loadParticles = ({ id }: { id: string }) => {
+  loadAll(tsParticles);
+  tsParticles.load({ id, options: PARTICLES_CONFIG });
 };
