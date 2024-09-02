@@ -249,7 +249,7 @@
     // reactive ($:) state area to watch assets state progress.
 
     progress = $assetsStore.progress.reduce(
-      (accumulator, current) => accumulator + (current.downloaded ?? 0),
+      (accumulator, current) => accumulator + (current.size ?? 0),
       0
     );
 
@@ -323,20 +323,26 @@
           >
             <div class="flex w-screen justify-center">
               <div class="flex flex-col">
-                <div class="relative w-[40vw]">
+                <div class="relative w-[40vw] text-[1vw] font-semibold">
+                  <div
+                    class="mb-[.3vw] flex animate-pulse items-center justify-center text-[1.2vw]"
+                  >
+                    {$assetsStore.state}
+                  </div>
                   <div class="h-[1.5vw] overflow-hidden rounded-md border border-neutral-600">
                     <div
                       bind:this={loadingElement}
-                      class="transition-loading z-10 h-full w-0 bg-white"
-                    />
+                      class="transition-loading z-10 flex h-full w-0 items-center justify-end bg-white"
+                    >
+                      <span class="mr-1 text-xs font-bold text-black">
+                        {calculatePercent(progress, totalSize).toFixed(0)}%
+                      </span>
+                    </div>
                     <div class="-z-10 w-full" />
                   </div>
-                  <div class="mt-[.3vw] flex items-end justify-between text-[1vw] font-semibold">
-                    <div>
-                      {formatBytes(progress)}
-                      {calculatePercent(progress, totalSize).toFixed(1)}%
-                    </div>
-                    <div>Loading...</div>
+                  <div class="mt-[.3vw] flex items-end justify-between">
+                    <div>{formatBytes(progress)} / {formatBytes($assetsStore.totalSize)}</div>
+                    <div>({$assetsStore.assets.length + 1}/{ASSETS.length})</div>
                   </div>
                 </div>
               </div>

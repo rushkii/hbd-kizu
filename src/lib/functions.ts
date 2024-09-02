@@ -8,24 +8,45 @@ import { PARTICLES_CONFIG } from './constants';
 
 type XHRRequest = ((this: XMLHttpRequest, e: ProgressEvent | Event) => unknown) | null;
 
-export const preloadAssets = ({ assets }: { assets: Asset[] }) => {
+export const preloadAssets = async ({ assets }: { assets: Asset[] }) => {
   // preloading assets.
+
+  const headRequests = [];
 
   for (const asset of assets) {
     // get assets info for file size.
-    request({
-      method: 'HEAD',
-      url: asset.src,
-      type: 'arraybuffer',
-      onReady() {
-        if (this.readyState !== this.DONE) return;
-        assetsStore.update((e) => {
-          e.totalSize += parseInt(this.getResponseHeader('Content-Length')!);
-          return e;
-        });
-      }
-    });
 
+    if (assets.indexOf(asset) === -1) {
+      assetsStore.update((e) => {
+        e.state = 'FILE_INFO_COMPLETE';
+        return e;
+      });
+    }
+
+    headRequests.push(
+      request({
+        method: 'HEAD',
+        url: asset.src,
+        type: 'arraybuffer',
+        onReady() {
+          if (this.readyState !== this.DONE) return;
+          assetsStore.update((e) => {
+            e.totalSize += parseInt(this.getResponseHeader('Content-Length')!);
+            return e;
+          });
+        }
+      })
+    );
+  }
+
+  await Promise.all(headRequests);
+
+  assetsStore.update((e) => {
+    e.state = 'ASSETS_DOWNLOADING';
+    return e;
+  });
+
+  for (const asset of assets) {
     // preload assets.
     request({
       method: 'GET',
@@ -62,7 +83,7 @@ export const preloadAssets = ({ assets }: { assets: Asset[] }) => {
 
           // save the progress value to the store/state.
           assetsStore.update((e) => {
-            e.progress = upsertItem(e.progress, { name: filename, downloaded: ev.loaded });
+            e.progress = upsertItem(e.progress, { filename: filename, size: ev.loaded });
             return e;
           });
         }
@@ -86,20 +107,32 @@ const request = ({
   onProgress?: XHRRequest;
   onReady?: XHRRequest;
 }) => {
-  const xhr = new XMLHttpRequest();
-  xhr.open(method, url, true);
-  xhr.responseType = type;
-  if (onLoad) xhr.onload = onLoad;
-  if (onProgress) xhr.onprogress = onProgress;
-  if (onReady) xhr.onreadystatechange = onReady;
-  xhr.send();
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open(method, url, true);
+    xhr.responseType = type;
+
+    xhr.onload = function (e) {
+      if (onLoad) onLoad.call(this, e);
+      resolve(xhr); // Resolve the promise when the request completes successfully
+    };
+
+    xhr.onerror = function () {
+      reject(new Error('Error on XHR')); // Reject the promise on error
+    };
+
+    if (onProgress) xhr.onprogress = onProgress;
+    if (onReady) xhr.onreadystatechange = onReady;
+
+    xhr.send();
+  });
 };
 
 const upsertItem = (array: Progress[], newItem: Progress) => {
   // updating the progress object like a MongoDB upsert.
 
   const newArray: Progress[] = [...array];
-  const index = newArray.findIndex((item) => item.name === newItem.name);
+  const index = newArray.findIndex((item) => item.filename === newItem.filename);
 
   if (index === -1) {
     newArray.push(newItem);

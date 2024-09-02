@@ -6,8 +6,10 @@ export const assetsStore = writable<{
   assets: Asset[];
   progress: Progress[];
   totalSize: number;
+  state?: string;
 }>({
   assets: [],
   progress: [],
-  totalSize: 0
+  totalSize: 0,
+  state: 'FILE_INFO_CHECK'
 });
