@@ -358,7 +358,7 @@
                       bind:this={loadingElement}
                       class="transition-loading z-10 flex h-full w-0 items-center justify-end bg-white"
                     >
-                      <span class="mr-1 text-xs font-bold text-black">
+                      <span class="mr-1 text-[1vw] font-bold text-black">
                         {calculatePercent(progress, totalSize).toFixed(0)}%
                       </span>
                     </div>
