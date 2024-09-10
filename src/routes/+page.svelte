@@ -1,5 +1,6 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { goto, invalidateAll } from '$app/navigation';
   import CloudIcons from '$components/CloudIcons.svelte';
   import { ASSETS, DIALOGUES } from '$lib';
   import { loadParticles, preloadAssets } from '$lib/functions';
@@ -215,13 +216,27 @@
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   };
 
+  const startLoadAssets = () => {
+    if (!screen.orientation.type.includes('landscape')) return;
+    preloadAssets({ assets: ASSETS });
+  };
+
+  const reload = () => {
+    window.location.href = '/';
+    startLoadAssets();
+  };
+
   const destroyEvents = () => {
     audio.removeEventListener('ended', autoplayDialogueAudio);
     audio.removeEventListener('ended', setEnded);
+    window.removeEventListener('orientationchange', reload);
   };
 
   onMount(() => {
-    preloadAssets({ assets: ASSETS });
+    if (!browser) return;
+
+    window.addEventListener('orientationchange', reload);
+    startLoadAssets();
 
     videoIntro.onended = () => {
       videoIntro.oncanplay = null;
@@ -300,6 +315,15 @@
 <!-- svelte-ignore a11y-no-static-element-interactions -->
 
 <div class="relative left-0 top-0 h-screen w-screen">
+  <div
+    class="absolute left-0 top-0 z-[999] flex h-screen w-screen flex-col items-center justify-center
+          text-balance bg-neutral-800 text-center uppercase text-white landscape:hidden"
+  >
+    <div class="text-3xl font-bold md:text-4xl">Rotate your screen!</div>
+    <div class="mt-1 text-xs font-medium sm:text-sm">
+      Sorry, this site only works on landscape screen
+    </div>
+  </div>
   <div
     on:click={play}
     class="absolute left-0 top-0 h-screen w-screen
