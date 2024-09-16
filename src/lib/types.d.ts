@@ -5,6 +5,6 @@ export interface Asset {
 }
 
 export interface Progress {
-  name?: string;
-  downloaded?: number;
+  filename?: string;
+  size?: number;
 }

@@ -1,8 +1,9 @@
 <script lang="ts">
   import { browser } from '$app/environment';
+  import { goto, invalidateAll } from '$app/navigation';
   import CloudIcons from '$components/CloudIcons.svelte';
   import { ASSETS, DIALOGUES } from '$lib';
-  import { preloadAssets } from '$lib/functions';
+  import { loadParticles, preloadAssets } from '$lib/functions';
   import { assetsStore } from '$lib/stores';
   import { onDestroy, onMount } from 'svelte';
   import { fade as fadeTransition } from 'svelte/transition';
@@ -19,6 +20,8 @@
   let canPlay: boolean = false;
   let showContinueBtn: boolean = false;
   let removeLoadingScreen: boolean = false;
+  let particlesLoaded: boolean = false;
+  let showParticles: boolean = false;
 
   let currentIndex: number = 0;
   let progress: number = 0;
@@ -213,13 +216,27 @@
     return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
   };
 
+  const startLoadAssets = () => {
+    if (!screen.orientation.type.includes('landscape')) return;
+    preloadAssets({ assets: ASSETS });
+  };
+
+  const reload = () => {
+    window.location.href = '/';
+    startLoadAssets();
+  };
+
   const destroyEvents = () => {
     audio.removeEventListener('ended', autoplayDialogueAudio);
     audio.removeEventListener('ended', setEnded);
+    window.removeEventListener('orientationchange', reload);
   };
 
   onMount(() => {
-    preloadAssets({ assets: ASSETS });
+    if (!browser) return;
+
+    window.addEventListener('orientationchange', reload);
+    startLoadAssets();
 
     videoIntro.onended = () => {
       videoIntro.oncanplay = null;
@@ -247,11 +264,18 @@
     // reactive ($:) state area to watch assets state progress.
 
     progress = $assetsStore.progress.reduce(
-      (accumulator, current) => accumulator + (current.downloaded ?? 0),
+      (accumulator, current) => accumulator + (current.size ?? 0),
       0
     );
 
     totalSize = $assetsStore.totalSize;
+
+    if (totalSize > 0 && !particlesLoaded) {
+      loadParticles({ id: 'particles' });
+      particlesLoaded = true;
+      showParticles = true;
+    }
+
     animateLoading();
 
     if ($assetsStore.assets.length === ASSETS.length) {
@@ -276,6 +300,11 @@
       });
 
       dialogues = arr.flatMap((e) => e.src);
+      showParticles = false;
+
+      setTimeout(() => {
+        document.querySelector('#particles')?.remove();
+      }, 1000);
     }
 
     calculatePercent(progress, totalSize);
@@ -287,11 +316,24 @@
 
 <div class="relative left-0 top-0 h-screen w-screen">
   <div
+    class="absolute left-0 top-0 z-[999] flex h-screen w-screen flex-col items-center justify-center
+          text-balance bg-neutral-800 text-center uppercase text-white landscape:hidden"
+  >
+    <div class="text-3xl font-bold md:text-4xl">Rotate your screen!</div>
+    <div class="mt-1 text-xs font-medium sm:text-sm">
+      Sorry, this site only works on landscape screen
+    </div>
+  </div>
+  <div
     on:click={play}
     class="absolute left-0 top-0 h-screen w-screen
       bg-neutral-800 transition duration-1000
       {removeLoadingScreen ? 'z-0 opacity-0' : ' z-40 opacity-100'}"
   >
+    <div
+      id="particles"
+      class="{showParticles ? 'opacity-100' : 'opacity-0'} transition-opacity duration-[2000ms]"
+    />
     <div class="relative flex min-h-screen justify-center p-[1vw]">
       <div
         class="absolute left-0 top-0 flex h-screen w-screen flex-col items-center justify-center text-white
@@ -305,20 +347,26 @@
           >
             <div class="flex w-screen justify-center">
               <div class="flex flex-col">
-                <div class="relative w-[40vw]">
+                <div class="relative w-[40vw] text-[1vw] font-semibold">
+                  <div
+                    class="mb-[.3vw] flex animate-pulse items-center justify-center text-[1.2vw]"
+                  >
+                    {$assetsStore.state}
+                  </div>
                   <div class="h-[1.5vw] overflow-hidden rounded-md border border-neutral-600">
                     <div
                       bind:this={loadingElement}
-                      class="transition-loading z-10 h-full w-0 bg-white"
-                    />
+                      class="transition-loading z-10 flex h-full w-0 items-center justify-end bg-white"
+                    >
+                      <span class="mr-1 text-[1vw] font-bold text-black">
+                        {calculatePercent(progress, totalSize).toFixed(0)}%
+                      </span>
+                    </div>
                     <div class="-z-10 w-full" />
                   </div>
-                  <div class="mt-[.3vw] flex items-end justify-between text-[1vw] font-semibold">
-                    <div>
-                      {formatBytes(progress)}
-                      {calculatePercent(progress, totalSize).toFixed(1)}%
-                    </div>
-                    <div>Loading...</div>
+                  <div class="mt-[.3vw] flex items-end justify-between">
+                    <div>{formatBytes(progress)} / {formatBytes($assetsStore.totalSize)}</div>
+                    <div>({$assetsStore.assets.length + 1}/{ASSETS.length})</div>
                   </div>
                 </div>
               </div>
